@@ -1,0 +1,32 @@
+{
+  "name": "@triageflow/worker",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "analytics:rollup": "node dist/analytics/rollup-daily.cli.js",
+    "analytics:schedule-once": "node dist/analytics/schedule-once.cli.js",
+    "dev": "nest start --watch",
+    "lint": "eslint .",
+    "queues:status": "node dist/sla/queue-status.cli.js",
+    "sla:check": "node dist/sla/check-breaches.cli.js",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.7",
+    "@nestjs/core": "^11.0.7",
+    "@triageflow/config": "workspace:*",
+    "@triageflow/db": "workspace:*",
+    "@triageflow/shared": "workspace:*",
+    "bullmq": "^5.34.2",
+    "ioredis": "^5.4.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+.next/
+dist/
+**/.next/
+**/dist/
+coverage/
+*.tsbuildinfo
+packages/db/generated/
+**/.prisma/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# benchmark raw outputs
+benchmark-results/local/*
+!benchmark-results/local/.gitkeep
+benchmark-results/**/*.json
+!benchmark-results/README.md
+!benchmark-results/.gitkeep
+!benchmark-results/local/
+!benchmark-results/local/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

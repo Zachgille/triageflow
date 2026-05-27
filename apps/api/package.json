@@ -1,0 +1,32 @@
+{
+  "name": "@triageflow/api",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "nest start --watch",
+    "lint": "eslint .",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.4.13",
+    "@nestjs/common": "^11.0.7",
+    "@nestjs/core": "^11.0.7",
+    "@nestjs/platform-fastify": "^11.0.7",
+    "@triageflow/config": "workspace:*",
+    "@triageflow/db": "workspace:*",
+    "@triageflow/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.6.2",
+    "ioredis": "^5.4.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.2",
+    "@nestjs/testing": "^11.0.7",
+    "vitest": "^2.1.8"
+  }
+}

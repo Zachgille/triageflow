@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String       @id @default(uuid()) @db.Uuid
+  clerkAuthProviderId String       @unique @map("clerk_auth_provider_id")
+  email               String       @unique
+  displayName         String       @map("display_name")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  memberships         Membership[]
+
+  @@map("users")
+}
+
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  auditLogs   AuditLog[]
+  analyticsDailyRollups AnalyticsDailyRollup[]
+  comments    TicketComment[]
+  memberships Membership[]
+  requesters  Requester[]
+  roles       Role[]
+  slaBreaches SlaBreach[]
+  slaPolicies SlaPolicy[]
+  tickets     Ticket[]
+
+  @@map("tenants")
+}
+
+model Membership {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  roleId          String           @map("role_id") @db.Uuid
+  status          MembershipStatus @default(ACTIVE)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role             @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Restrict)
+  assignedTickets Ticket[]
+  comments        TicketComment[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@index([tenantId, roleId])
+  @@map("memberships")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  key             String
+  name            String
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships     Membership[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, key])
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  key             String           @unique
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  tenantId     String     @map("tenant_id") @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Requester {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  email     String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  comments  TicketComment[]
+  tickets   Ticket[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, email])
+  @@map("requesters")
+}
+
+model Ticket {
+  id                 String         @id @default(uuid()) @db.Uuid
+  tenantId           String         @map("tenant_id") @db.Uuid
+  requesterId        String         @map("requester_id") @db.Uuid
+  assigneeUserId     String?        @map("assignee_user_id") @db.Uuid
+  status             TicketStatus   @default(NEW)
+  priority           TicketPriority @default(NORMAL)
+  subject            String
+  description        String
+  firstResponseDueAt DateTime?      @map("first_response_due_at")
+  resolutionDueAt    DateTime?      @map("resolution_due_at")
+  firstRespondedAt   DateTime?      @map("first_responded_at")
+  resolvedAt         DateTime?      @map("resolved_at")
+  closedAt           DateTime?      @map("closed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester          Requester      @relation(fields: [tenantId, requesterId], references: [tenantId, id], onDelete: Restrict)
+  assignee           Membership?    @relation(fields: [tenantId, assigneeUserId], references: [tenantId, userId], onDelete: Restrict)
+  comments           TicketComment[]
+  slaBreaches        SlaBreach[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, createdAt(sort: Desc), id(sort: Desc)], map: "tickets_tenant_id_created_at_id_desc_idx")
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, assigneeUserId, status, createdAt])
+  @@index([tenantId, priority, createdAt])
+  @@map("tickets")
+}
+
+model SlaPolicy {
+  id                   String         @id @default(uuid()) @db.Uuid
+  tenantId             String         @map("tenant_id") @db.Uuid
+  name                 String
+  priority             TicketPriority
+  firstResponseMinutes Int            @map("first_response_minutes")
+  resolutionMinutes    Int            @map("resolution_minutes")
+  isDefault            Boolean        @default(false) @map("is_default")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  tenant               Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, priority])
+  @@index([tenantId, priority])
+  @@map("sla_policies")
+}
+
+model SlaBreach {
+  id             String        @id @default(uuid()) @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  ticketId       String        @map("ticket_id") @db.Uuid
+  breachType     SlaBreachType @map("breach_type")
+  breachedAt     DateTime      @map("breached_at")
+  acknowledgedAt DateTime?     @map("acknowledged_at")
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket         Ticket        @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, ticketId, breachType])
+  @@index([tenantId, ticketId, breachType])
+  @@index([tenantId, breachedAt])
+  @@map("sla_breaches")
+}
+
+model TicketComment {
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  ticketId          String            @map("ticket_id") @db.Uuid
+  authorUserId      String?           @map("author_user_id") @db.Uuid
+  authorRequesterId String?           @map("author_requester_id") @db.Uuid
+  visibility        CommentVisibility
+  body              String
+  createdAt         DateTime          @default(now()) @map("created_at")
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket            Ticket            @relation(fields: [tenantId, ticketId], references: [tenantId, id], onDelete: Cascade)
+  authorUser        Membership?       @relation(fields: [tenantId, authorUserId], references: [tenantId, userId], onDelete: Restrict)
+  authorRequester   Requester?        @relation(fields: [tenantId, authorRequesterId], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, ticketId, createdAt])
+  @@index([tenantId, authorUserId, createdAt])
+  @@map("ticket_comments")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id") @db.Uuid
+  action      String
+  before      Json?
+  after       Json?
+  metadata    Json     @default("{}")
+  requestId   String?  @map("request_id")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, entityType, entityId, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, actorUserId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model AnalyticsDailyRollup {
+  id                           String   @id @default(uuid()) @db.Uuid
+  tenantId                     String   @map("tenant_id") @db.Uuid
+  date                         DateTime @db.Date
+  openedCount                  Int      @default(0) @map("opened_count")
+  resolvedCount                Int      @default(0) @map("resolved_count")
+  closedCount                  Int      @default(0) @map("closed_count")
+  publicCommentCount           Int      @default(0) @map("public_comment_count")
+  internalNoteCount            Int      @default(0) @map("internal_note_count")
+  firstResponseSlaBreachCount  Int      @default(0) @map("first_response_sla_breach_count")
+  resolutionSlaBreachCount     Int      @default(0) @map("resolution_sla_breach_count")
+  avgFirstResponseSeconds      Float?   @map("avg_first_response_seconds")
+  avgResolutionSeconds         Float?   @map("avg_resolution_seconds")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+  tenant                       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+  @@map("analytics_daily_rollups")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TicketStatus {
+  NEW
+  OPEN
+  PENDING_CUSTOMER
+  PENDING_INTERNAL
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CommentVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+enum SlaBreachType {
+  FIRST_RESPONSE @map("first_response")
+  RESOLUTION     @map("resolution")
+}
