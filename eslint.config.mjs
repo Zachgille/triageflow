@@ -12,6 +12,7 @@ export default [
       '**/coverage/**',
       '**/node_modules/**',
       'apps/api/vitest.config.ts',
+      'apps/api/vitest.integration.config.ts',
       'pnpm-lock.yaml',
     ],
   },

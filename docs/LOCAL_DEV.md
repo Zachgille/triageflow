@@ -54,6 +54,25 @@ corepack pnpm typecheck
 corepack pnpm build
 ```
 
+## Live API Integration Tests
+
+The API has a focused live PostgreSQL integration suite for critical tenant isolation, RBAC, cursor pagination, audit, and transaction behavior. It uses a dedicated test database and does not require real Clerk keys.
+
+Default test database:
+
+```powershell
+TEST_DATABASE_URL="postgresql://triageflow:triageflow@localhost:5432/triageflow_test?schema=public"
+```
+
+Run it after local PostgreSQL is available:
+
+```powershell
+corepack pnpm infra:up
+corepack pnpm test:integration
+```
+
+The runner creates `triageflow_test` when it is missing, refuses to run against a database name that does not contain `test`, applies Prisma migrations with `migrate deploy`, truncates test-owned tables between tests, and seeds only the records required by the suite. Authentication is faked through the API auth provider abstraction with test headers, so Clerk secrets and real sessions are not used.
+
 ## Useful Commands
 
 Validate the Prisma schema without applying migrations:
@@ -226,6 +245,7 @@ For the full environment setup guide, including Clerk key handling, see [ENV_SET
 `.env.example` contains the required local placeholders:
 
 - `DATABASE_URL`
+- `TEST_DATABASE_URL`
 - `REDIS_URL`
 - `CLERK_SECRET_KEY`
 - `CLERK_JWT_KEY`

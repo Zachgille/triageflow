@@ -4,7 +4,7 @@ Last updated: 2026-05-27
 
 ## Current Phase
 
-Conservative repeatable analytics rollup scheduling.
+Portfolio/repository polish for reviewer handoff.
 
 ## Completed
 
@@ -685,32 +685,128 @@ Notes:
 - Prisma currently warns that `package.json#prisma` seed configuration is deprecated for Prisma 7. The current project uses Prisma 6.19.3.
 - Root `corepack pnpm db:validate` requires `DATABASE_URL`. It failed when no `.env` file existed, then passed with the local Docker `DATABASE_URL` supplied in the shell.
 
+## Live PostgreSQL API Integration Harness
+
+Added a focused live database integration path for critical API behavior:
+
+- Root command: `corepack pnpm test:integration`.
+- API command: `corepack pnpm --filter @triageflow/api test:integration`.
+- Runner: `scripts/api-integration-test.mjs`.
+- Vitest config: `apps/api/vitest.integration.config.ts`.
+- Live suite: `apps/api/src/integration/api.live.integration-spec.ts`.
+- Test harness utilities: `apps/api/src/integration/live-api-test-harness.ts`.
+
+Strategy:
+
+- Uses local PostgreSQL through `TEST_DATABASE_URL`.
+- Defaults to `postgresql://triageflow:triageflow@localhost:5432/triageflow_test?schema=public`.
+- Creates the test database when missing.
+- Refuses to run against a database whose name does not contain `test`.
+- Applies Prisma migrations with `migrate deploy` before running tests.
+- Truncates test-owned tables between tests.
+- Seeds only minimal tenants, users, roles, permissions, requesters, tickets, comments, SLA policies, and analytics rows.
+- Overrides the `AuthIdentityProvider` with a test-header implementation, so no real Clerk keys or sessions are required.
+- Uses the real Nest app, guards, repositories, Prisma service, PostgreSQL constraints, and transaction behavior.
+
+Coverage added:
+
+- Tenant isolation for ticket list/detail, comment list/create, requester assignment, and assignee assignment.
+- Tenant-specific RBAC, including viewer read-only behavior, permitted agent update, no-membership denial, and `analytics:read` denial.
+- Ticket cursor pagination using real inserted rows, same-`created_at` ordering by `id`, filter preservation, invalid cursor rejection, and no duplicate rows.
+- Comment cursor pagination using oldest-first ordering, same-`created_at` ordering by `id`, public/internal filtering, invalid cursor rejection, and no duplicate rows.
+- Transactional audit behavior for ticket and comment creation.
+- Missing SLA policy rollback proving no partial ticket or audit log.
+- First public internal-user comment setting `first_responded_at`; internal note does not.
+
+Infrastructure fix:
+
+- Added explicit `@Inject(AppConfigService)` to `RedisService` so the full Nest app can be instantiated in tests without relying on emitted constructor metadata.
+
+Commands run:
+
+- `corepack pnpm infra:up` passed; PostgreSQL and Redis containers were already running.
+- `corepack pnpm --filter @triageflow/api test:integration` passed with 15 live PostgreSQL tests.
+- `corepack pnpm test:integration` passed with 15 live PostgreSQL tests.
+- `corepack pnpm lint` passed.
+- `corepack pnpm typecheck` passed.
+- `corepack pnpm build` passed.
+- `corepack pnpm --filter @triageflow/api test` passed.
+- `corepack pnpm --filter @triageflow/web test` passed.
+- `corepack pnpm --filter @triageflow/worker test` passed.
+- `corepack pnpm test` passed.
+- `corepack pnpm db:validate` passed.
+- `corepack pnpm db:migrate:deploy` passed.
+- `corepack pnpm db:generate` was attempted but failed because Windows would not replace Prisma's `query_engine-windows.dll.node` while local Node/API processes had Prisma loaded.
+
+Known limitations:
+
+- The live suite is intentionally focused and does not duplicate every mocked controller/unit test.
+- It requires local PostgreSQL and a reachable test database.
+- The runner does not drop the test database; it truncates test-owned tables between test cases.
+- The integration runner uses `shell: true` on Windows so Corepack commands resolve correctly; Node 24 emits a non-failing child-process deprecation warning for that mode.
+
+## Portfolio And Reviewer Packaging
+
+Added reviewer-oriented documentation:
+
+- Rewrote `README.md` as the main 2-3 minute project landing page.
+- Added `docs/README.md` as a documentation index.
+- Added `docs/DEMO_SCRIPT.md` for a 3-5 minute recruiter/interview walkthrough.
+- Added `docs/ARCHITECTURE_SUMMARY.md` for high-signal architectural decisions and tradeoffs.
+- Added `docs/RESUME_BULLETS.md` with measured resume bullets and interview talking points.
+- Added `docs/REPO_HYGIENE.md` with publication and validation checklist.
+
+Stale state fixed:
+
+- Removed the outdated next-task reference to evaluating the tenant/order index; that optimization is complete and documented.
+- Removed the outdated not-started entry for the integration harness; it is complete and passing.
+- Updated known risks to separate intentional future improvements from resolved validation gaps.
+- Added `TEST_DATABASE_URL` to local environment documentation.
+
+Commands run for this polish slice:
+
+- `corepack pnpm db:generate` passed after stopping local TriageFlow Node/API/web processes that held Prisma's Windows query engine DLL.
+- `corepack pnpm lint` passed.
+- `corepack pnpm typecheck` passed.
+- `corepack pnpm build` passed.
+- `corepack pnpm --filter @triageflow/api test` passed.
+- `corepack pnpm --filter @triageflow/api test:integration` passed.
+- `corepack pnpm --filter @triageflow/web test` passed.
+- `corepack pnpm --filter @triageflow/worker test` passed.
+- `corepack pnpm test` passed.
+- `corepack pnpm test:integration` passed.
+- `corepack pnpm db:validate` passed.
+
 ## Not Started
 
-- Integration test harness
 - SLA worker dashboard/public observability
-- Benchmark-driven index optimization
+- Notifications/email delivery
+- Invites/member management
+- Billing
+- Email ingestion
+- Business-hours calendars
+- Tenant timezone calendars
+- Deployment/hosting hardening
 
 ## Active Constraints
 
-- Do not implement billing, invites, email ingestion, business-hours calendars, notifications, tenant timezone calendars, or frontend redesigns during benchmark/reporting phases.
+- Do not implement billing, invites, email ingestion, business-hours calendars, notifications, tenant timezone calendars, or frontend redesigns during documentation/reviewer polish phases.
 - Future implementation work should be delivered as small vertical slices.
 - Update this file after meaningful changes.
 
 ## Next Recommended Task
 
-Evaluate whether a tenant/order ticket index is justified for unfiltered ticket queues and cursor pages, using the captured query-plan evidence and without changing schema until the optimization slice is explicit.
+Capture optional portfolio screenshots/video after starting the local app with real Clerk keys, or prepare the repository for publishing with the checklist in `docs/REPO_HYGIENE.md`.
 
 ## Known Risks
 
-- Ticket controller integration tests use mocked Prisma behavior rather than a live database integration harness.
-- Comment controller integration tests use mocked Prisma behavior rather than a live database integration harness.
-- Ticket and comment cursor pagination are implemented with `createdAt`/`id` cursors. Live query-plan inspection is now captured for the baseline; unfiltered ticket queues still use sequential scans locally and should be evaluated before any larger benchmark claim.
+- Ticket/comment controller unit-style integration tests still use mocked Prisma behavior, but the critical tenant isolation, RBAC, pagination, audit, and transaction paths now also have a focused live PostgreSQL integration harness.
+- Ticket and comment cursor pagination are implemented with `createdAt`/`id` cursors. Live query-plan inspection is captured, and the unfiltered ticket queue now has a targeted tenant/order index.
 - Frontend component tests mock Clerk and API state; real Clerk sign-in/onboarding remains covered by the manual checklist in `docs/LOCAL_AUTH_SMOKE_TEST.md`.
 - Viewer/agent/admin permission-specific frontend states were not manually browser-verified with real Clerk sessions in this environment. The UI now derives permissions from `GET /api/me`, but backend authorization remains authoritative.
-- The frontend only has manual/browser smoke verification right now; no Playwright or component tests are configured.
+- The frontend has Vitest/React Testing Library component coverage, but no Playwright browser automation suite yet.
 - The temporary debug auth/RBAC endpoint still exists for development/test but returns `404` in production.
-- SLA calculations are simple 24/7 elapsed-time math only. Business hours, holidays, timezone-specific calendars, workers, queues, notifications, analytics, and frontend SLA UI are not implemented.
+- SLA calculations are simple 24/7 elapsed-time math only. Business hours, holidays, timezone-specific calendars, notifications, and frontend SLA UI are not implemented.
 - SLA deadlines are assigned at ticket creation only. Recalculating deadlines after priority changes is not implemented yet and should be handled deliberately in a future ticket/SLA policy task.
 - SLA satisfaction timestamps are first occurrence fields. Reopen counts, repeated resolution timing, and close history are not modeled beyond audit logs yet.
 - SLA breach checks are now repeatably scheduled by a running worker. Public dashboards, alerting/notifications, and analytics rollups are not implemented yet.

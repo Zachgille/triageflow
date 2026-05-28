@@ -47,6 +47,10 @@ corepack pnpm build
 # tests
 corepack pnpm test
 
+# live PostgreSQL API integration tests
+corepack pnpm test:integration
+corepack pnpm --filter @triageflow/api test:integration
+
 # API guard tests
 corepack pnpm --filter @triageflow/api test
 

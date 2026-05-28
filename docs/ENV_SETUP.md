@@ -61,6 +61,7 @@ CLERK_AUTHORIZED_PARTIES="http://localhost:3000"
 `.env.example` contains the current required local variables:
 
 - `DATABASE_URL`
+- `TEST_DATABASE_URL`
 - `REDIS_URL`
 - `APP_BASE_URL`
 - `NODE_ENV`
@@ -71,11 +72,16 @@ CLERK_AUTHORIZED_PARTIES="http://localhost:3000"
 - `CLERK_JWT_KEY`
 - `CLERK_AUTHORIZED_PARTIES`
 - `CLERK_DEV_BEARER_AUTH`
+- `SLA_CHECK_INTERVAL_SECONDS`
+- `ANALYTICS_ROLLUP_SCHEDULE_ENABLED`
+- `ANALYTICS_ROLLUP_INTERVAL_SECONDS`
+- `ANALYTICS_ROLLUP_TENANT_BATCH_SIZE`
 
 For default Docker Compose services:
 
 ```powershell
 DATABASE_URL="postgresql://triageflow:triageflow@localhost:5432/triageflow?schema=public"
+TEST_DATABASE_URL="postgresql://triageflow:triageflow@localhost:5432/triageflow_test?schema=public"
 REDIS_URL="redis://localhost:6379"
 APP_BASE_URL="http://localhost:3000"
 NEXT_PUBLIC_API_BASE_URL="http://localhost:3001"

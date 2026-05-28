@@ -27,6 +27,15 @@ Required coverage:
 
 Integration tests are required for every API endpoint and repository behavior that touches tenant-owned data.
 
+The API also has a live PostgreSQL integration harness for behavior that mocks cannot prove. Run it with:
+
+```bash
+corepack pnpm test:integration
+corepack pnpm --filter @triageflow/api test:integration
+```
+
+The harness uses `TEST_DATABASE_URL` or derives a `*_test` database from `DATABASE_URL`, applies migrations, truncates tenant-owned tables between tests, seeds minimal tenants/users/RBAC/requesters/tickets/comments/SLA policies/analytics rows, and overrides only the auth identity provider. It does not require real Clerk keys and refuses non-test database names.
+
 Required coverage:
 
 - auth guard behavior
@@ -50,6 +59,7 @@ Required coverage:
 - analytics rollup repository behavior, including opened/resolved/closed counts, comment visibility counts, SLA breach counts, average duration calculations, empty-day behavior, and cross-tenant denial
 - analytics rollup worker behavior, including tenant/date upsert idempotency, missing tenant rejection, invalid date rejection, no cross-tenant side effects, and queue status reporting for the analytics queue
 - protected analytics endpoint behavior, including unauthenticated denial, missing membership denial, missing `analytics:read` denial, tenant-specific permission checks, overview tenant scoping, daily rollup tenant scoping, invalid date format denial, `from > to` denial, too-large range denial, and empty rollup range behavior
+- live PostgreSQL checks for cross-tenant ticket/comment denial, tenant-specific RBAC, cursor tie-break ordering, missing-SLA rollback, transactional audit creation, and first-response timestamp behavior
 
 Every new endpoint must include integration tests before it is considered complete.
 

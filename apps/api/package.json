@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "start": "node dist/main.js",
     "test": "vitest run",
+    "test:integration": "node ../../scripts/api-integration-test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

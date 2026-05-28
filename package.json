@@ -26,6 +26,7 @@
     "db:bench:counts": "dotenv -e .env -- node scripts/bench-counts.mjs",
     "smoke:local": "node scripts/local-smoke.mjs",
     "test": "corepack pnpm -r test",
+    "test:integration": "corepack pnpm --filter @triageflow/api test:integration",
     "typecheck": "corepack pnpm --filter @triageflow/config build && corepack pnpm --filter @triageflow/db build && corepack pnpm --filter @triageflow/shared build && corepack pnpm -r typecheck",
     "worker:analytics:rollup": "dotenv -e .env -- corepack pnpm --filter @triageflow/worker analytics:rollup",
     "worker:analytics:schedule-once": "dotenv -e .env -- corepack pnpm --filter @triageflow/worker analytics:schedule-once",

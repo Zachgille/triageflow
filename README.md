@@ -1,113 +1,108 @@
 # TriageFlow
 
-TriageFlow is a production-style multi-tenant support desk SaaS.
+TriageFlow is a production-style multi-tenant support desk SaaS built to demonstrate backend-heavy full-stack engineering: tenant isolation, application RBAC, audited workflows, workers, analytics, and measured performance.
 
-The planned stack is:
+It models the core of a support platform where multiple workspaces can manage tickets, public customer replies, internal notes, SLA breach checks, and operational analytics without leaking data across tenants.
 
-- Frontend: Next.js, TypeScript, Tailwind CSS, shadcn/ui
-- API: NestJS, Fastify, TypeScript
-- Database: PostgreSQL, Prisma
-- Background jobs: Redis, BullMQ
-- Authentication: Clerk for identity only
-- CI: GitHub Actions
-- Local development: Docker Compose
-- Load testing: k6
+## What It Includes
 
-This repository currently contains the monorepo scaffold, identity/RBAC database foundation, Clerk authentication integration, authenticated profile/workspace onboarding, ticket/comment APIs, audit logging, SLA and analytics workers, protected analytics APIs, a minimal frontend analytics dashboard, cursor pagination, and local k6 benchmark harnesses.
+- Multi-tenant data model with `tenant_id` on tenant-owned tables.
+- Clerk authentication for identity, with application-owned users, memberships, roles, and permissions for authorization.
+- Backend-enforced RBAC using tenant-scoped `RequestContext`.
+- Ticket queue, ticket detail, ticket creation, status transitions, assignment, public comments, and internal notes.
+- Transactional audit logging for important ticket/comment mutations.
+- SLA policies, synchronous SLA satisfaction timestamps, idempotent BullMQ SLA breach workers, and repeatable worker scheduling.
+- Analytics daily rollups, analytics worker jobs, protected analytics API endpoints, and a minimal permission-aware analytics dashboard.
+- Opaque cursor pagination for ticket and comment lists.
+- Deterministic large seed data and k6 benchmark harness.
+- Live PostgreSQL API integration tests for tenant isolation, RBAC, pagination, audit, and transactional behavior.
 
-## System Goals
+## Architecture
 
-TriageFlow must support pooled multi-tenancy with `tenant_id` on every tenant-owned table and tenant-scoped data access throughout the backend. Authorization is enforced by the backend through users, tenants, memberships, roles, permissions, and role permissions.
+TriageFlow is a modular monolith with a separate worker process:
 
-The core ticket workflow is:
+- `apps/web`: Next.js frontend
+- `apps/api`: NestJS + Fastify API
+- `apps/worker`: BullMQ worker process
+- `packages/db`: Prisma schema/client package
+- `packages/config`: shared runtime config validation
+- `packages/shared`: shared TypeScript types
+- `infra`: Docker Compose and k6 scripts
 
-```text
-new -> open -> pending_customer
-          \-> pending_internal
-          \-> resolved -> closed
-```
+The API owns authorization and business rules. Controllers do not call Prisma directly; tenant-owned data access goes through repositories/services that receive `RequestContext`. Workers reuse tenant-scoped data-access rules and rely on database uniqueness for idempotency.
 
-Tickets support public comments and internal notes. Internal notes must never be exposed to users without the required permission.
+## Tech Stack
 
-Important business mutations must write audit logs transactionally where practical. Background processing uses Redis and BullMQ for SLA checks, SLA breach detection, notifications, and analytics rollups. Worker behavior must be idempotent.
+- Next.js, TypeScript, Tailwind CSS, shadcn/ui-ready components
+- NestJS, Fastify, TypeScript
+- PostgreSQL, Prisma
+- Redis, BullMQ
+- Clerk
+- Vitest, React Testing Library
+- Docker Compose
+- k6
 
-## Performance Target
+## Local Setup
 
-The benchmark target is p95 under 150ms for indexed read endpoints under documented benchmark conditions using:
+Windows PowerShell from the repository root:
 
-- 50k simulated tickets
-- 250k simulated comments
-- k6 load tests
-- PostgreSQL indexes for tenant-scoped ticket lists, queues, SLA checks, audit logs, and search
-
-See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for benchmark methodology.
-
-## Documentation Map
-
-- [AGENTS.md](AGENTS.md): instructions for future coding agents
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): high-level architecture and constraints
-- [docs/PROJECT_RULES.md](docs/PROJECT_RULES.md): strict implementation rules
-- [docs/SECURITY.md](docs/SECURITY.md): threat model and security requirements
-- [docs/ENV_SETUP.md](docs/ENV_SETUP.md): local environment and Clerk key setup
-- [docs/LOCAL_AUTH_SMOKE_TEST.md](docs/LOCAL_AUTH_SMOKE_TEST.md): manual real-auth smoke test checklist
-- [docs/TEST_PLAN.md](docs/TEST_PLAN.md): required testing strategy
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md): benchmark contract and current local baseline
-- [docs/benchmarks/2026-05-27-local-baseline.md](docs/benchmarks/2026-05-27-local-baseline.md): dated local k6 baseline
-- [docs/benchmarks/2026-05-27-query-plans.md](docs/benchmarks/2026-05-27-query-plans.md): dated query-plan evidence
-- [docs/IMPLEMENTATION_STATE.md](docs/IMPLEMENTATION_STATE.md): current implementation status
-- [docs/decisions](docs/decisions): architectural decision records
-
-## Setup
-
-For the full Windows PowerShell setup flow, see [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md). For Clerk and `.env` setup, see [docs/ENV_SETUP.md](docs/ENV_SETUP.md). For real-auth verification, see [docs/LOCAL_AUTH_SMOKE_TEST.md](docs/LOCAL_AUTH_SMOKE_TEST.md).
-
-Install dependencies:
-
-```bash
+```powershell
 corepack pnpm install
-```
-
-Start local infrastructure:
-
-```bash
-corepack pnpm infra:up
-```
-
-Prepare local database:
-
-```bash
 Copy-Item .env.example .env
+corepack pnpm infra:up
 corepack pnpm db:migrate
 corepack pnpm db:generate
 corepack pnpm db:seed
 ```
 
-Configure Clerk for authenticated local UI/API calls:
+For real Clerk auth, set these in `.env`:
 
-```bash
-# set real values in .env
+```powershell
 CLERK_SECRET_KEY="sk_test_..."
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 CLERK_AUTHORIZED_PARTIES="http://localhost:3000"
 ```
 
-After Clerk is configured, open `http://localhost:3000/onboarding` to sign in, complete the internal profile bootstrap, create a first workspace, and enter that workspace ticket queue.
+Run the apps:
 
-Check local environment values without printing secrets:
-
-```bash
-corepack pnpm env:doctor
+```powershell
+corepack pnpm --filter @triageflow/api dev
+corepack pnpm --filter @triageflow/web dev
+corepack pnpm --filter @triageflow/worker dev
 ```
 
-Check local API/web reachability after both dev servers are running:
+Open `http://localhost:3000/onboarding` to sign in, complete profile bootstrap, create a workspace, and enter the ticket queue.
 
-```bash
-corepack pnpm smoke:local
+## Validation
+
+```powershell
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm build
+corepack pnpm test
+corepack pnpm test:integration
+corepack pnpm db:validate
+corepack pnpm db:generate
 ```
 
-Optional benchmark dataset and k6 harness:
+The live API integration suite uses `TEST_DATABASE_URL` and a dedicated `triageflow_test` database. It applies migrations, seeds minimal test data, and uses a test auth provider rather than real Clerk sessions.
 
-```bash
+## Benchmarks
+
+TriageFlow includes an opt-in deterministic benchmark seed:
+
+- 10 tenants
+- 500 users
+- 50,000 tickets
+- 250,000 comments
+- 500,000 audit logs
+- SLA breaches and analytics rollups
+
+Full local k6 baseline, 20 VUs for 5 minutes, met the p95 under 150ms target for measured indexed read endpoints. A query-plan-driven index optimization changed unfiltered ticket queue reads from sequential scan + top-N sort to an index scan and reduced `ticket_list` p95 from `42.00ms` to `17.59ms` under documented local conditions.
+
+Benchmark commands:
+
+```powershell
 corepack pnpm db:seed:large
 corepack pnpm db:bench:counts
 corepack pnpm bench:k6:tickets
@@ -115,37 +110,20 @@ corepack pnpm bench:k6:comments
 corepack pnpm bench:k6:mixed
 ```
 
-Benchmark runs use the development bearer-token fallback and require the API to run with `NODE_ENV=development` and `CLERK_DEV_BEARER_AUTH=true`. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) before publishing any benchmark claims.
+Benchmark auth uses the local development bearer fallback only with `NODE_ENV=development` and `CLERK_DEV_BEARER_AUTH=true`. Do not enable it in production.
 
-Run validation:
+## Security Model
 
-```bash
-corepack pnpm lint
-corepack pnpm typecheck
-corepack pnpm build
-corepack pnpm --filter @triageflow/web test
-```
+Frontend permission hiding is cosmetic. The backend enforces auth, tenant resolution, membership checks, and permission checks for protected routes. Cross-tenant object access is denied through tenant-scoped repositories and composite database relations. Internal notes are returned only to users with internal-note permission.
 
-Run development processes:
+## Documentation
 
-```bash
-corepack pnpm --filter @triageflow/web dev
-corepack pnpm --filter @triageflow/api dev
-corepack pnpm --filter @triageflow/worker dev
-```
-
-## Non-Negotiable Rules
-
-1. Controllers must never call Prisma directly.
-2. Every tenant-owned table must include `tenant_id`.
-3. Every tenant-owned query must be scoped by `tenant_id`.
-4. Every protected endpoint requires auth, tenant resolution, membership check, and permission check.
-5. Frontend authorization is cosmetic only; backend authorization is authoritative.
-6. Every important business mutation writes an audit log in the same database transaction where practical.
-7. Background jobs must be idempotent.
-8. All schema changes require migrations.
-9. Applied migrations must never be edited.
-10. No new endpoint without integration tests.
-11. No raw SQL without an index/query-plan rationale.
-12. No broad refactors without tests passing first.
-13. Main branch must always remain deployable.
+- [docs/README.md](docs/README.md): documentation index
+- [docs/ARCHITECTURE_SUMMARY.md](docs/ARCHITECTURE_SUMMARY.md): interview-oriented architecture summary
+- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md): 3-5 minute walkthrough script
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md): benchmark methodology and results
+- [docs/TEST_PLAN.md](docs/TEST_PLAN.md): test strategy
+- [docs/SECURITY.md](docs/SECURITY.md): threat model
+- [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md): local setup
+- [docs/RESUME_BULLETS.md](docs/RESUME_BULLETS.md): measured resume/interview phrasing
+- [docs/REPO_HYGIENE.md](docs/REPO_HYGIENE.md): publication checklist
