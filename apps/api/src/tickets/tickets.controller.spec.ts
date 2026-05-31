@@ -28,6 +28,7 @@ type MembershipRecord = {
   id: string;
   tenantId: string;
   userId: string;
+  status: 'ACTIVE' | 'SUSPENDED';
   permissions: string[];
 };
 
@@ -55,6 +56,7 @@ const tenantBId = '22222222-2222-4222-8222-222222222222';
 const adminUserId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const agentUserId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const viewerUserId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const suspendedUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const tenantBTicketId = '77777777-7777-4777-8777-777777777777';
 const tenantATicketId = '88888888-8888-4888-8888-888888888888';
 const tenantARequesterId = '99999999-9999-4999-8999-999999999999';
@@ -69,6 +71,7 @@ const users: UserRecord[] = [
   { id: adminUserId, clerkAuthProviderId: 'clerk_admin' },
   { id: agentUserId, clerkAuthProviderId: 'clerk_agent' },
   { id: viewerUserId, clerkAuthProviderId: 'clerk_viewer' },
+  { id: suspendedUserId, clerkAuthProviderId: 'clerk_suspended' },
 ];
 
 const memberships: MembershipRecord[] = [
@@ -76,25 +79,36 @@ const memberships: MembershipRecord[] = [
     id: 'membership-admin-a',
     tenantId: tenantAId,
     userId: adminUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read', 'ticket:create', 'ticket:update', 'ticket:assign'],
   },
   {
     id: 'membership-admin-b',
     tenantId: tenantBId,
     userId: adminUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read'],
   },
   {
     id: 'membership-agent-a',
     tenantId: tenantAId,
     userId: agentUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read', 'ticket:update', 'ticket:assign'],
   },
   {
     id: 'membership-viewer-a',
     tenantId: tenantAId,
     userId: viewerUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read'],
+  },
+  {
+    id: 'membership-suspended-a',
+    tenantId: tenantAId,
+    userId: suspendedUserId,
+    status: 'SUSPENDED',
+    permissions: ['ticket:read', 'ticket:create', 'ticket:update', 'ticket:assign'],
   },
 ];
 
@@ -139,11 +153,12 @@ function createMockPrisma() {
       }),
     },
     membership: {
-      findUnique: vi.fn(({ where }: { where: { tenantId_userId: { tenantId: string; userId: string } } }) => {
+      findFirst: vi.fn(({ where }: { where: { tenantId: string; userId: string; status: 'ACTIVE' } }) => {
         const membership = memberships.find(
           (candidate) =>
-            candidate.tenantId === where.tenantId_userId.tenantId &&
-            candidate.userId === where.tenantId_userId.userId,
+            candidate.tenantId === where.tenantId &&
+            candidate.userId === where.userId &&
+            candidate.status === where.status,
         );
 
         if (!membership) {
@@ -158,6 +173,15 @@ function createMockPrisma() {
             })),
           },
         };
+      }),
+      findUnique: vi.fn(({ where }: { where: { tenantId_userId: { tenantId: string; userId: string } } }) => {
+        const membership = memberships.find(
+          (candidate) =>
+            candidate.tenantId === where.tenantId_userId.tenantId &&
+            candidate.userId === where.tenantId_userId.userId,
+        );
+
+        return membership ? { id: membership.id } : null;
       }),
     },
     requester: {
@@ -316,6 +340,25 @@ describe('TicketsController', () => {
 
     expect(readResponse.statusCode).toBe(200);
     expect(createResponse.statusCode).toBe(403);
+  });
+
+  it('rejects suspended tenant members for read and mutation routes', async () => {
+    const readResponse = await app!.inject({
+      method: 'GET',
+      url: '/api/tenants/tenant-a/tickets',
+      headers: authHeaders('clerk_suspended'),
+    });
+    const updateResponse = await app!.inject({
+      method: 'PATCH',
+      url: `/api/tenants/tenant-a/tickets/${tenantATicketId}`,
+      headers: authHeaders('clerk_suspended'),
+      payload: { subject: 'suspended update' },
+    });
+
+    expect(readResponse.statusCode).toBe(403);
+    expect(readResponse.json()).toMatchObject({ code: 'TENANT_MEMBERSHIP_REQUIRED' });
+    expect(updateResponse.statusCode).toBe(403);
+    expect(updateResponse.json()).toMatchObject({ code: 'TENANT_MEMBERSHIP_REQUIRED' });
   });
 
   it('lets an agent update a ticket when permission exists', async () => {

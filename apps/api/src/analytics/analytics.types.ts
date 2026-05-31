@@ -26,6 +26,15 @@ export type AnalyticsOverview = {
 
 export type AnalyticsDailyRollupRecord = Prisma.AnalyticsDailyRollupGetPayload<object>;
 
+export type AnalyticsDailyRollupResponse = Omit<
+  AnalyticsDailyRollupInput,
+  'internalNoteCount'
+> & {
+  id: string;
+  date: Date;
+  internalNoteCount?: number;
+};
+
 export type AnalyticsPrismaClient = Pick<
   Prisma.TransactionClient,
   'analyticsDailyRollup' | 'ticket' | 'ticketComment' | 'slaBreach'

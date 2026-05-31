@@ -48,6 +48,19 @@ export class AnalyticsRepository {
           lte: to,
         },
       },
+      select: {
+        id: true,
+        date: true,
+        openedCount: true,
+        resolvedCount: true,
+        closedCount: true,
+        publicCommentCount: true,
+        internalNoteCount: true,
+        firstResponseSlaBreachCount: true,
+        resolutionSlaBreachCount: true,
+        avgFirstResponseSeconds: true,
+        avgResolutionSeconds: true,
+      },
       orderBy: { date: 'asc' },
     });
   }

@@ -26,6 +26,7 @@ type MembershipRecord = {
   id: string;
   tenantId: string;
   userId: string;
+  status: 'ACTIVE';
   permissions: string[];
 };
 
@@ -45,18 +46,21 @@ const memberships: MembershipRecord[] = [
     id: 'membership-owner-a',
     tenantId: 'tenant-a-id',
     userId: 'owner-user-id',
+    status: 'ACTIVE',
     permissions: ['tenant.manage'],
   },
   {
     id: 'membership-owner-b',
     tenantId: 'tenant-b-id',
     userId: 'owner-user-id',
+    status: 'ACTIVE',
     permissions: ['tickets.read'],
   },
   {
     id: 'membership-viewer-a',
     tenantId: 'tenant-a-id',
     userId: 'viewer-user-id',
+    status: 'ACTIVE',
     permissions: ['tickets.read'],
   },
 ];
@@ -88,15 +92,16 @@ const mockPrisma = {
     },
   },
   membership: {
-    findUnique: ({
+    findFirst: ({
       where,
     }: {
-      where: { tenantId_userId: { tenantId: string; userId: string } };
+      where: { tenantId: string; userId: string; status: 'ACTIVE' };
     }) => {
       const membership = memberships.find(
         (candidate) =>
-          candidate.tenantId === where.tenantId_userId.tenantId &&
-          candidate.userId === where.tenantId_userId.userId,
+          candidate.tenantId === where.tenantId &&
+          candidate.userId === where.userId &&
+          candidate.status === where.status,
       );
 
       if (!membership) {

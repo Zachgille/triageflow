@@ -59,7 +59,7 @@ describe('AnalyticsDashboardClient', () => {
     mockApi({
       analyticsOverview: overview(),
       analyticsRollups: [rollup()],
-      me: okMe([analyticsMembership()]),
+      me: okMe([analyticsMembership(['ticket:read', 'analytics:read', 'comment:read_internal'])]),
     });
 
     renderDashboard();
@@ -69,6 +69,20 @@ describe('AnalyticsDashboardClient', () => {
     expect(screen.getByText('opened_count')).toBeInTheDocument();
     expect(screen.getByText('public_comment_count')).toBeInTheDocument();
     expect(screen.getByText('first_response_sla_breach_count')).toBeInTheDocument();
+    expect(screen.getAllByText('5').length).toBeGreaterThan(0);
+  });
+
+  it('renders redacted internal note counts as restricted instead of zero', async () => {
+    mockApi({
+      analyticsOverview: overview(),
+      analyticsRollups: [{ ...rollup(), internalNoteCount: undefined }],
+      me: okMe([analyticsMembership()]),
+    });
+
+    renderDashboard();
+
+    expect(await screen.findByRole('heading', { name: 'Daily rollups' })).toBeInTheDocument();
+    expect(screen.getByText('Restricted')).toBeInTheDocument();
   });
 
   it('renders null average durations as no data', async () => {
@@ -156,9 +170,9 @@ function renderDashboard() {
   );
 }
 
-function analyticsMembership() {
+function analyticsMembership(permissions = ['ticket:read', 'analytics:read']) {
   return membership({
-    permissions: ['ticket:read', 'analytics:read'],
+    permissions,
     roleKey: 'admin',
     roleName: 'Admin',
     tenantSlug: 'demo',
@@ -182,7 +196,6 @@ function overview() {
 function rollup() {
   return {
     id: 'rollup-1',
-    tenantId: 'tenant-demo',
     date: '2026-05-26T00:00:00.000Z',
     openedCount: 1,
     resolvedCount: 2,
@@ -193,7 +206,5 @@ function rollup() {
     resolutionSlaBreachCount: 7,
     avgFirstResponseSeconds: 60,
     avgResolutionSeconds: 3600,
-    createdAt: '2026-05-26T12:00:00.000Z',
-    updatedAt: '2026-05-26T12:00:00.000Z',
   };
 }

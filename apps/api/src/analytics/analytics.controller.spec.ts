@@ -25,6 +25,7 @@ type MembershipRecord = {
   id: string;
   tenantId: string;
   userId: string;
+  status: 'ACTIVE';
   permissions: string[];
 };
 
@@ -82,24 +83,28 @@ const memberships: MembershipRecord[] = [
     id: 'membership-owner-a',
     tenantId: tenantAId,
     userId: ownerUserId,
-    permissions: ['analytics:read'],
+    status: 'ACTIVE',
+    permissions: ['analytics:read', 'comment:read_internal'],
   },
   {
     id: 'membership-admin-a',
     tenantId: tenantAId,
     userId: adminUserId,
+    status: 'ACTIVE',
     permissions: ['analytics:read'],
   },
   {
     id: 'membership-admin-b',
     tenantId: tenantBId,
     userId: adminUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read'],
   },
   {
     id: 'membership-agent-a',
     tenantId: tenantAId,
     userId: agentUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read'],
   },
 ];
@@ -138,11 +143,12 @@ function createMockPrisma() {
       }),
     },
     membership: {
-      findUnique: vi.fn(({ where }: { where: { tenantId_userId: { tenantId: string; userId: string } } }) => {
+      findFirst: vi.fn(({ where }: { where: { tenantId: string; userId: string; status: 'ACTIVE' } }) => {
         const membership = memberships.find(
           (candidate) =>
-            candidate.tenantId === where.tenantId_userId.tenantId &&
-            candidate.userId === where.tenantId_userId.userId,
+            candidate.tenantId === where.tenantId &&
+            candidate.userId === where.userId &&
+            candidate.status === where.status,
         );
 
         if (!membership) {
@@ -340,17 +346,36 @@ describe('AnalyticsController', () => {
     expect(tenantBResponse.statusCode).toBe(403);
   });
 
-  it('returns tenant-scoped daily rollups', async () => {
+  it('redacts internal note counts for analytics readers without internal-note read permission', async () => {
     const response = await app!.inject({
       method: 'GET',
       url: '/api/tenants/tenant-a/analytics/daily-rollups?from=2026-05-25&to=2026-05-26',
       headers: authHeaders('clerk_admin'),
     });
+    const body = response.json<{ data: Array<Omit<RollupRecord, 'internalNoteCount'>> }>();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data).toHaveLength(2);
+    expect(body.data[0]).toMatchObject({
+      id: 'rollup-a-1',
+      openedCount: 1,
+      publicCommentCount: 4,
+    });
+    expect(body.data[0]).not.toHaveProperty('internalNoteCount');
+    expect(body.data[1]).not.toHaveProperty('internalNoteCount');
+  });
+
+  it('returns internal note counts for analytics readers with internal-note read permission', async () => {
+    const response = await app!.inject({
+      method: 'GET',
+      url: '/api/tenants/tenant-a/analytics/daily-rollups?from=2026-05-25&to=2026-05-26',
+      headers: authHeaders('clerk_owner'),
+    });
     const body = response.json<{ data: RollupRecord[] }>();
 
     expect(response.statusCode).toBe(200);
     expect(body.data).toHaveLength(2);
-    expect(body.data.every((rollup) => rollup.tenantId === tenantAId)).toBe(true);
+    expect(body.data.map((rollup) => rollup.internalNoteCount)).toEqual([5, 5]);
   });
 
   it('returns empty daily rollups when no rows exist for the range', async () => {

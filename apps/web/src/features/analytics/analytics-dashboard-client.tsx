@@ -163,7 +163,7 @@ function DailyRollupsTable({ rollups }: { rollups: AnalyticsDailyRollup[] }) {
                 <td className="px-4 py-3">{rollup.resolvedCount}</td>
                 <td className="px-4 py-3">{rollup.closedCount}</td>
                 <td className="px-4 py-3">{rollup.publicCommentCount}</td>
-                <td className="px-4 py-3">{rollup.internalNoteCount}</td>
+                <td className="px-4 py-3">{formatRedactedCount(rollup.internalNoteCount)}</td>
                 <td className="px-4 py-3">{rollup.firstResponseSlaBreachCount}</td>
                 <td className="px-4 py-3">{rollup.resolutionSlaBreachCount}</td>
                 <td className="px-4 py-3">{formatDuration(rollup.avgFirstResponseSeconds)}</td>
@@ -191,6 +191,10 @@ export function formatDuration(seconds: number | null) {
   }
 
   return `${roundOneDecimal(seconds / 3600)}h`;
+}
+
+function formatRedactedCount(value: number | undefined) {
+  return value === undefined ? 'Restricted' : value;
 }
 
 function roundOneDecimal(value: number) {

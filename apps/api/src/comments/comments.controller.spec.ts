@@ -39,6 +39,7 @@ const memberships = [
     id: 'membership-admin-a',
     tenantId: tenantAId,
     userId: adminUserId,
+    status: 'ACTIVE',
     permissions: [
       'ticket:read',
       'comment:create_public',
@@ -50,6 +51,7 @@ const memberships = [
     id: 'membership-viewer-a',
     tenantId: tenantAId,
     userId: viewerUserId,
+    status: 'ACTIVE',
     permissions: ['ticket:read', 'comment:create_public'],
   },
 ];
@@ -90,11 +92,12 @@ function createMockPrisma() {
       }),
     },
     membership: {
-      findUnique: vi.fn(({ where }: { where: { tenantId_userId: { tenantId: string; userId: string } } }) => {
+      findFirst: vi.fn(({ where }: { where: { tenantId: string; userId: string; status: 'ACTIVE' } }) => {
         const membership = memberships.find(
           (candidate) =>
-            candidate.tenantId === where.tenantId_userId.tenantId &&
-            candidate.userId === where.tenantId_userId.userId,
+            candidate.tenantId === where.tenantId &&
+            candidate.userId === where.userId &&
+            candidate.status === where.status,
         );
 
         if (!membership) {
@@ -109,6 +112,15 @@ function createMockPrisma() {
             })),
           },
         };
+      }),
+      findUnique: vi.fn(({ where }: { where: { tenantId_userId: { tenantId: string; userId: string } } }) => {
+        const membership = memberships.find(
+          (candidate) =>
+            candidate.tenantId === where.tenantId_userId.tenantId &&
+            candidate.userId === where.tenantId_userId.userId,
+        );
+
+        return membership ? { id: membership.id } : null;
       }),
     },
     requester: {

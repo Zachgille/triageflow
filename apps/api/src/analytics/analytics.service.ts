@@ -2,6 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import type { RequestContext } from '../tenant-context/request-context';
 import { AnalyticsRepository, normalizeUtcDate } from './analytics.repository';
+import type { AnalyticsDailyRollupResponse } from './analytics.types';
+
+const internalNoteReadPermission = 'comment:read_internal';
 
 @Injectable()
 export class AnalyticsService {
@@ -18,7 +21,26 @@ export class AnalyticsService {
     return this.analytics.getOverview(ctx);
   }
 
-  getTenantDailyRollups(ctx: RequestContext, from: Date, to: Date) {
-    return this.analytics.getDailyRollups(ctx, normalizeUtcDate(from), normalizeUtcDate(to));
+  async getTenantDailyRollups(
+    ctx: RequestContext,
+    from: Date,
+    to: Date,
+  ): Promise<AnalyticsDailyRollupResponse[]> {
+    const includeInternalNoteCount = ctx.permissions.includes(internalNoteReadPermission);
+    const rollups = await this.analytics.getDailyRollups(ctx, normalizeUtcDate(from), normalizeUtcDate(to));
+
+    return rollups.map((rollup) => ({
+      id: rollup.id,
+      date: rollup.date,
+      openedCount: rollup.openedCount,
+      resolvedCount: rollup.resolvedCount,
+      closedCount: rollup.closedCount,
+      publicCommentCount: rollup.publicCommentCount,
+      ...(includeInternalNoteCount ? { internalNoteCount: rollup.internalNoteCount } : {}),
+      firstResponseSlaBreachCount: rollup.firstResponseSlaBreachCount,
+      resolutionSlaBreachCount: rollup.resolutionSlaBreachCount,
+      avgFirstResponseSeconds: rollup.avgFirstResponseSeconds,
+      avgResolutionSeconds: rollup.avgResolutionSeconds,
+    }));
   }
 }

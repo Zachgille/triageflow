@@ -101,6 +101,19 @@ describe('AnalyticsRepository', () => {
           lte: to,
         },
       },
+      select: {
+        id: true,
+        date: true,
+        openedCount: true,
+        resolvedCount: true,
+        closedCount: true,
+        publicCommentCount: true,
+        internalNoteCount: true,
+        firstResponseSlaBreachCount: true,
+        resolutionSlaBreachCount: true,
+        avgFirstResponseSeconds: true,
+        avgResolutionSeconds: true,
+      },
       orderBy: { date: 'asc' },
     });
   });
@@ -115,7 +128,7 @@ describe('AnalyticsRepository', () => {
     );
 
     expect(rollups).toHaveLength(1);
-    expect(rollups[0]!.tenantId).toBe(tenantAId);
+    expect(rollups[0]!.id).toBe('rollup-a');
   });
 
   it('normalizes dates to UTC calendar day', () => {

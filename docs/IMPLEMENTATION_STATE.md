@@ -1,6 +1,6 @@
 # Implementation State
 
-Last updated: 2026-05-27
+Last updated: 2026-05-29
 
 ## Current Phase
 
@@ -44,6 +44,10 @@ Portfolio/repository polish for reviewer handoff.
 - Added tenant context infrastructure that resolves `:tenantSlug`, maps Clerk provider user ids to internal users, loads tenant membership, and derives membership permissions.
 - Added `RequestContext` containing `requestId`, `userId`, `tenantId`, `membershipId`, and `permissions`.
 - Added `@RequirePermission(...)` and `PermissionGuard` for backend-enforced RBAC checks.
+- Hardened tenant context resolution so only `ACTIVE` memberships produce a `RequestContext`; suspended memberships now receive the same tenant-membership-required denial as users without valid access.
+- Added direct tenant resolver regression tests for active membership success, suspended membership denial, no-membership denial, and unknown-tenant not-found behavior.
+- Added ticket controller regression coverage proving suspended members are denied for both representative read and mutation routes while active members retain existing behavior.
+- Hardened analytics daily rollup responses so `internalNoteCount` is returned only to callers with `comment:read_internal`; analytics readers without that permission still receive non-internal rollup metrics.
 - Added a temporary debug-only endpoint at `GET /api/tenants/:tenantSlug/_debug/context` requiring `tenant.manage`.
 - Added Vitest-based API guard tests covering unauthenticated rejection, no-membership rejection, allowed tenant access, cross-tenant role differences, and missing permission rejection.
 - Added the initial tenant-owned ticket domain schema with `Requester`, `Ticket`, `TicketStatus`, and `TicketPriority`.

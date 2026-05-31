@@ -80,19 +80,16 @@ export type AnalyticsOverview = {
 
 export type AnalyticsDailyRollup = {
   id: string;
-  tenantId: string;
   date: string;
   openedCount: number;
   resolvedCount: number;
   closedCount: number;
   publicCommentCount: number;
-  internalNoteCount: number;
+  internalNoteCount?: number;
   firstResponseSlaBreachCount: number;
   resolutionSlaBreachCount: number;
   avgFirstResponseSeconds: number | null;
   avgResolutionSeconds: number | null;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type AnalyticsDailyRollupsResponse = {

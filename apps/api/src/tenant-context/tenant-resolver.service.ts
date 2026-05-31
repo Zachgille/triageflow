@@ -46,12 +46,11 @@ export class TenantResolver {
       });
     }
 
-    const membership = await this.prisma.membership.findUnique({
+    const membership = await this.prisma.membership.findFirst({
       where: {
-        tenantId_userId: {
-          tenantId: tenant.id,
-          userId: user.id,
-        },
+        tenantId: tenant.id,
+        userId: user.id,
+        status: 'ACTIVE',
       },
       select: {
         id: true,
