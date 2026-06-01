@@ -1,0 +1,16 @@
+.git
+.github
+.pnpm-store
+.tmp
+benchmark-results/local
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+api-smoke.*.log

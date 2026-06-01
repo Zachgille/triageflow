@@ -1,14 +1,66 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_ENV: test
+  DATABASE_URL: postgresql://triageflow:triageflow@localhost:5432/triageflow_test?schema=public
+  TEST_DATABASE_URL: postgresql://triageflow:triageflow@localhost:5432/triageflow_test?schema=public
+  REDIS_URL: redis://localhost:6379
+  CLERK_SECRET_KEY: sk_test_placeholder
+  CLERK_JWT_KEY: ""
+  CLERK_AUTHORIZED_PARTIES: http://localhost:3000
+  CLERK_DEV_BEARER_AUTH: "false"
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+  APP_BASE_URL: http://localhost:3000
+  NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+  PORT: "3001"
+  SLA_CHECK_INTERVAL_SECONDS: "60"
+  ANALYTICS_ROLLUP_SCHEDULE_ENABLED: "false"
+  ANALYTICS_ROLLUP_INTERVAL_SECONDS: "3600"
+  ANALYTICS_ROLLUP_TENANT_BATCH_SIZE: "100"
 
 jobs:
   validate:
+    name: Lint, Typecheck, Build, Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: triageflow
+          POSTGRES_PASSWORD: triageflow
+          POSTGRES_DB: triageflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U triageflow -d triageflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -24,13 +76,25 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Validate Prisma schema
+        run: corepack pnpm --filter @triageflow/db prisma:validate
+
+      - name: Generate Prisma Client
+        run: corepack pnpm --filter @triageflow/db prisma:generate
 
       - name: Lint
-        run: pnpm lint
+        run: corepack pnpm lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: corepack pnpm typecheck
 
       - name: Build
-        run: pnpm build
+        run: corepack pnpm build
+
+      - name: Unit tests
+        run: corepack pnpm test
+
+      - name: Live PostgreSQL integration tests
+        run: corepack pnpm test:integration

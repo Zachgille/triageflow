@@ -1,6 +1,6 @@
 # Implementation State
 
-Last updated: 2026-05-29
+Last updated: 2026-06-01
 
 ## Current Phase
 
@@ -759,6 +759,11 @@ Added reviewer-oriented documentation:
 - Added `docs/ARCHITECTURE_SUMMARY.md` for high-signal architectural decisions and tradeoffs.
 - Added `docs/RESUME_BULLETS.md` with measured resume bullets and interview talking points.
 - Added `docs/REPO_HYGIENE.md` with publication and validation checklist.
+- Added `docs/CI_CD.md` with GitHub repository setup steps, workflow descriptions, required secrets, branch protection guidance, CI failure triage, and local validation commands.
+- Replaced the basic GitHub Actions CI workflow with a fuller `ci.yml` that installs with a frozen pnpm lockfile, validates and generates Prisma, runs lint, typecheck, build, unit/component tests, and live PostgreSQL API integration tests against GitHub Actions PostgreSQL and Redis services.
+- Added `docker.yml` to build the API, web, and worker Docker images on pull requests and pushes to `main`.
+- Added `release-or-deploy.yml` to publish API, web, and worker images to GHCR on pushes to `main` and manual dispatch using `GITHUB_TOKEN`; no production deployment target is configured yet.
+- Added Docker build definitions for `apps/api`, `apps/web`, and `apps/worker`, plus a root `.dockerignore` for cleaner Docker contexts.
 
 Stale state fixed:
 
@@ -780,6 +785,18 @@ Commands run for this polish slice:
 - `corepack pnpm test` passed.
 - `corepack pnpm test:integration` passed.
 - `corepack pnpm db:validate` passed.
+- CI/CD foundation validation on 2026-06-01:
+  - `corepack pnpm install --frozen-lockfile` passed.
+  - `corepack pnpm db:validate` passed.
+  - `corepack pnpm --filter @triageflow/db prisma:generate` passed.
+  - `corepack pnpm lint` passed.
+  - `corepack pnpm typecheck` passed.
+  - `corepack pnpm build` passed.
+  - `corepack pnpm test` passed.
+  - `corepack pnpm test:integration` passed.
+  - `docker build -f apps/api/Dockerfile .` passed.
+  - `docker build -f apps/web/Dockerfile .` passed.
+  - `docker build -f apps/worker/Dockerfile .` passed.
 
 ## Not Started
 
@@ -791,6 +808,7 @@ Commands run for this polish slice:
 - Business-hours calendars
 - Tenant timezone calendars
 - Deployment/hosting hardening
+- Real production CD beyond GHCR image publishing
 
 ## Active Constraints
 
