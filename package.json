@@ -19,7 +19,7 @@
     "infra:down": "docker-compose -f infra/docker-compose.yml down",
     "infra:logs": "docker-compose -f infra/docker-compose.yml logs -f",
     "infra:up": "docker-compose -f infra/docker-compose.yml up -d",
-    "lint": "eslint .",
+    "lint": "corepack pnpm --filter @triageflow/config build && corepack pnpm --filter @triageflow/db build && corepack pnpm --filter @triageflow/shared build && eslint .",
     "bench:k6:comments": "node scripts/run-k6.mjs comments",
     "bench:k6:mixed": "node scripts/run-k6.mjs mixed",
     "bench:k6:tickets": "node scripts/run-k6.mjs tickets",

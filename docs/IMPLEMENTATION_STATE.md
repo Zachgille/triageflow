@@ -764,6 +764,8 @@ Added reviewer-oriented documentation:
 - Added `docker.yml` to build the API, web, and worker Docker images on pull requests and pushes to `main`.
 - Added `release-or-deploy.yml` to publish API, web, and worker images to GHCR on pushes to `main` and manual dispatch using `GITHUB_TOKEN`; no production deployment target is configured yet.
 - Added Docker build definitions for `apps/api`, `apps/web`, and `apps/worker`, plus a root `.dockerignore` for cleaner Docker contexts.
+- Fixed CI lint/type-aware failures on fresh checkouts by making the root `lint` script build the internal `@triageflow/config`, `@triageflow/db`, and `@triageflow/shared` type surfaces before running ESLint.
+- Updated GitHub Actions checkout/setup actions to newer stable Node 24-compatible versions where available while keeping the project runtime on Node 22.
 
 Stale state fixed:
 
@@ -797,6 +799,7 @@ Commands run for this polish slice:
   - `docker build -f apps/api/Dockerfile .` passed.
   - `docker build -f apps/web/Dockerfile .` passed.
   - `docker build -f apps/worker/Dockerfile .` passed.
+- CI lint-order fix validation on 2026-06-01 reproduced the fresh-checkout lint failure after removing generated build output, then verified the updated command order locally.
 
 ## Not Started
 
